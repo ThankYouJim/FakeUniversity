@@ -41,18 +41,21 @@ namespace FakeUniversity.Pages.Instructors
         public async Task<IActionResult> OnPostAsync(int? id)
         {
             if (id == null)
-            {
                 return NotFound();
-            }
 
-            Instructor = await _context.Instructors.FindAsync(id);
+            Instructor instructorToDelete = await _context.Instructors
+                .Include(i => i.CourseAssignments)  // need this otherwise the course assignments will not be deleted after instructor is
+                .SingleAsync(m => m.ID == id);
+            if (instructorToDelete == null)
+                return RedirectToPage("./Index");
 
-            if (Instructor != null)
-            {
-                _context.Instructors.Remove(Instructor);
-                await _context.SaveChangesAsync();
-            }
+            var departments = await _context.Departments
+                .Where(d => d.InstructorID == id)
+                .ToListAsync();
+            departments.ForEach(d => d.InstructorID = null);
 
+            _context.Instructors.Remove(instructorToDelete);
+            await _context.SaveChangesAsync();
             return RedirectToPage("./Index");
         }
     }
